@@ -43,9 +43,9 @@ garantie. [Voir le matériel, les connexions et les photos](docs/HARDWARE.md).
 ## Installer et utiliser
 
 1. Consulter le [montage matériel](docs/HARDWARE.md).
-2. [Compiler le firmware](docs/DEVELOPMENT.md#compiler-le-profil-actif), puis suivre
-   la [première installation USB](firmware/WindCalmThreadOTA/USB-RECOVERY.txt).
-3. Appairer le XIAO à Matter dans HA et [adapter la carte Home Assistant](home-assistant/INSTALLATION.txt).
+2. Suivre le [guide de première installation sur un XIAO vierge](docs/FIRST-INSTALL.md) :
+   compilation, flash USB complet, code Matter et ajout dans HA.
+3. [Adapter la carte Home Assistant](home-assistant/INSTALLATION.txt) aux entités créées.
 4. Pour les mises à jour suivantes, suivre la [procédure OTA](home-assistant/MAINTENANCE.txt).
 
 Un [exemple de carte YAML](home-assistant/wind-calm-card.yaml) est également
@@ -53,6 +53,7 @@ fourni. Adaptez sa présentation et remplacez les identifiants par vos entités.
 
 ## Documentation
 
+- [Première installation sur un XIAO vierge](docs/FIRST-INSTALL.md).
 - [Développement, compilation et tests](docs/DEVELOPMENT.md).
 - [Maintenance, diagnostics et récupération USB](home-assistant/MAINTENANCE.txt).
 - [Portée des validations](VERIFICATION.txt) et [vérifications avant installation définitive](PRODUCTION.txt).
