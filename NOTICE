@@ -1,0 +1,11 @@
+Wind Calm — original project code is licensed under MIT (see LICENSE).
+
+The initial Thread commissioning order was informed by the Arduino-ESP32 3.3.12
+MatterCHIPoBLEThread example, which carries the following upstream attribution:
+Copyright 2026 Espressif Systems (Shanghai) PTE LTD.
+Example license: Apache License, Version 2.0.
+Source and license links are recorded in SOURCES.md and LICENSES.txt.
+
+Downloaded SDKs and components retain their own copyright and license notices.
+The project license does not replace those licenses or the license of historical
+third-party material. See LICENSES.txt before distributing firmware binaries.

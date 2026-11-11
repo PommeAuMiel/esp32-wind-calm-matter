@@ -1,0 +1,182 @@
+WIND CALM — MISE À JOUR USB ET RÉCUPÉRATION SUR LE LAYOUT À DEUX SLOTS
+
+Portée et état connu
+
+La migration initiale USB vers la base 40000 a été exécutée et vérifiée par
+readbacks complets. Les OTA 40000 → 40001 → 40002 → 40003 ont ensuite réussi,
+avec version native 40003 / 4.0.3-thread-ota confirmée via Matter le 6 octobre.
+L'otadata actuel n'a pas été relu directement après ces OTA : les positions des
+images ne remplacent pas une nouvelle lecture avant USB. Ne plus supposer la
+présence de la base 40000 dans un slot après ces mises à jour successives.
+La preuve directe de seq2 / VALID / CRC porte sur la base 40000 avant l'OTA.
+
+Ce document décrit la méthode à préparer pour une prochaine mise à jour ou
+récupération. Aucun nouveau plan USB n'a encore été généré depuis l'état réel
+40003, ni exécuté. Ne pas relancer le script de première migration : il est
+spécifique à l'ancien layout à un slot, au diagnostic 0052 et à seq2.
+
+Préparation
+
+Préparer l'accès physique : secteur coupé, USB comme seule source alimentant
+le XIAO. Avec la nouvelle alimentation régulée indépendante, déconnecter sa
+sortie +5 V du VBUS avant l'USB pour éviter de l'alimenter à l'envers. Le
+contrôleur n'a pas besoin d'être alimenté pour une récupération USB du XIAO.
+L'USB n'est pas nécessaire pour une mise à jour OTA normale. Fermer les autres programmes
+qui utilisent le port série, puis identifier le port réellement présent et
+l'identité USB de cette puce ; un ancien nom /dev/cu.* ne suffit pas.
+
+Si Matter répond encore, consigner avant de passer en ROM : version/chaîne
+natives, VID/PID, disponibilité et état OTA Idle. Ne pas interrompre une OTA en
+cours pour lancer une écriture USB. En cas de nœud inaccessible, conserver ce
+fait comme une limite de preuve et préparer une récupération, pas une mise à
+jour normale supposant que l'application actuelle est saine.
+
+Passer volontairement en ROM pour les lectures, contrôler identité ESP32-C6,
+taille de flash et état Secure Boot/chiffrement. Si l'état de sécurité diffère
+des conditions vérifiées ici, arrêter : ne pas forcer une écriture non chiffrée,
+modifier des eFuses ou appliquer le plan historique.
+
+Lire une sauvegarde complète fraîche des 4 Mio sans écriture, puis rester en
+ROM sans reset automatique pendant la préparation du plan. Conserver cette
+sauvegarde, son SHA-256, l'identité et les logs dans un dossier privé : elle
+contient NVS, fabric et données d'appairage. Aucun dump ne doit être publié.
+
+Identifier les partitions, les sélecteurs et les applications
+
+1. Vérifier la table présente, son intégrité et ses bornes. Le layout attendu
+   est NVS 0x9000/0x5000, otadata 0xe000/0x2000, app0 0x10000/0x1f0000,
+   app1 0x200000/0x1f0000, coredump 0x3f0000/0x10000. Tout écart demande un
+   autre plan ; ne pas écrire une nouvelle table pour revenir à cette attente.
+2. Décoder les deux entrées otadata aux débuts des secteurs 0xe000 et 0xf000 :
+   ota_seq, ota_state et CRC. Leur secteur ne doit pas être déduit du nom du
+   slot. Le CRC SDK couvre seulement les quatre octets little-endian de ota_seq,
+   avec esp_rom_crc32_le(UINT32_MAX, ..., 4), pas l'état ni les 4 KiB du secteur.
+3. Les états sont NEW=0, PENDING_VERIFY=1, VALID=2, INVALID=3, ABORTED=4,
+   UNDEFINED=0xffffffff. Pour une mise à jour normale, exiger une application
+   courante identifiée et un sélecteur VALID avec CRC correct. NEW/PENDING,
+   séquence nulle, CRC incorrect, ambiguïté ou état UNDEFINED ne donnent pas la
+   même preuve de santé : arrêter la procédure normale et analyser le cas.
+4. Avec le layout à deux slots et les protections actuelles, le SDK choisit la
+   plus grande séquence parmi les entrées admissibles ; INVALID/ABORTED et
+   séquence effacée sont exclues. Le slot correspond à (ota_seq - 1) modulo 2.
+   Le plan doit reproduire le comportement du bootloader réellement conservé,
+   pas seulement supposer que « la plus récente » est utilisable.
+5. Vérifier checksum, SHA ESP et descripteur de chaque image dans sa partition.
+   Rapprocher la version de l'image sélectionnée du relevé Matter préalable.
+   Un sélecteur correct ne prouve pas que l'image correspondante est intacte ;
+   une version en cache HA ne prouve pas le sélecteur ni VALID.
+
+Le slot actif et son secteur de sélection VALID deviennent les plages à
+préserver. Le slot inactif est l'autre partition applicative, pas toujours app1.
+Une prochaine mise à jour sacrifiera le contenu de ce slot inactif ; la version
+courante préservée devient l'image précédente pour le rollback. Archiver donc
+aussi l'ancienne image inactive avant de la remplacer.
+
+Construire un nouveau plan sans accès à l'appareil
+
+Le plan doit nommer une seule image applicative .bin ESP32-C6, son projet/version,
+ses octets, SHA-256, taille et marge de slot. Le .ota avec en-tête Matter sert à
+la livraison par HA ; il ne s'écrit pas directement comme application en flash.
+Conserver les endpoints, l'identité, le layout et les interfaces NVS compatibles.
+Utiliser la nouvelle release, pas un .bin pris dans une ancienne sortie générique.
+
+Le plan calcule depuis les deux sélecteurs réels une nouvelle séquence positive,
+strictement supérieure à la séquence active admissible, sans débordement et
+différente de 0xffffffff, qui sélectionne le slot inactif. Il remplace le secteur
+de l'autre entrée otadata, en préservant celui qui sélectionne l'application
+courante VALID ; le secteur à modifier ne se déduit pas du nom app0/app1.
+Il construit un seul secteur de 4 KiB avec état NEW et CRC correct, en gardant
+l'autre secteur VALID identique octet pour octet. Ne pas réutiliser seq2, son CRC historique
+ou l'offset 0xf000 sans ce calcul. Des séquences proches du débordement ou des
+entrées ambiguës exigent un traitement distinct, pas un reset arbitraire à 1.
+
+Les sources de première migration fournissent des parseurs/contrôles utiles,
+mais tools/ota_migration_plan.py refuse le layout actuel et impose une ancienne
+identité applicative. Il faut un nouveau plan ponctuel et un exécuteur revu pour
+le cas réel, avec simulation offline du résultat complet et des échecs entre
+étapes. Aucun outil fourni ici ne généralise automatiquement cette activation.
+
+Opération limitée, après validation du plan concret
+
+Recontrôler la puce et relire la flash complète juste avant toute écriture. Elle
+doit être identique octet pour octet à la sauvegarde qui a servi au plan ; sinon le plan est
+périmé. Le plan doit calculer aussi les plages effacées avec l'alignement des
+secteurs et vérifier qu'elles ne débordent pas du slot inactif.
+
+Étape 1 : écrire seulement le .bin applicatif dans le slot inactif identifié.
+Sans reset, relire les 4 Mio et comparer au résultat exact attendu, y compris
+le padding effacé et toutes les plages protégées. Bootloader, table, NVS,
+application active, deux secteurs otadata et coredump restent inchangés.
+
+Étape 2 : uniquement après ce readback réussi, écrire le seul secteur otadata
+inactif NEW calculé par le plan. Sans reset, relire les 4 Mio et vérifier image,
+CRC/état/sélection, secteur VALID conservé et toutes les plages protégées.
+
+Les étapes emploient des options sans reset avant/après et préservent mode,
+fréquence et taille de flash. Au premier écart, timeout ou erreur, arrêter sans
+écriture suivante, retry automatique ou reset. Les logs et readbacks restent
+privés. Il n'y a pas de commande générique à copier pour un slot encore inconnu.
+
+Ne pas utiliser idf.py flash, Arduino Upload, erase-flash, un fichier fusionné,
+un flash complet, ota_data_initial.bin ou la sortie de flash générique du SDK.
+Ne pas réécrire bootloader, table, NVS ou les deux secteurs otadata ; seule
+l'activation précise d'un secteur prévue par le plan est autorisée ici.
+
+Premier boot et confirmation
+
+Après les deux étapes et readbacks conformes, démarrer volontairement la nouvelle
+application. NEW est transformé en PENDING_VERIFY par le bootloader. Le contrôle
+local exige setup terminé, endpoints/clusters attendus, dix secondes de loop
+continue et intégrité du heap avant confirmation VALID. Un reset avant cette
+confirmation peut faire revenir à l'application précédente. Depuis 40002,
+au moins deux probes exécutées par la tâche Matter sont aussi requises ;
+elles contrôlent le progrès local et ne demandent pas de connexion HA.
+Ne pas multiplier les resets pendant cette fenêtre.
+
+Observer le démarrage et la version native. Après une fenêtre locale suffisante
+(au moins 60 s), une lecture ROM des seuls secteurs otadata peut apporter une
+preuve directe de VALID/CRC/slot, en restant ensuite sans reset automatique.
+Si la nouvelle entrée est encore PENDING ou invalide, conserver l'état et
+analyser avant de relancer. Cette lecture/reset contrôlé appartient au plan ;
+un simple affichage HA ou un log de progression ne prouve pas VALID.
+
+Vérifier après démarrage : disponibilité, appairage conservé, version native,
+état OTA Idle et essais HA/télécommande. Un rollback de flash ne restaure pas
+automatiquement les modifications NVS faites par la nouvelle application.
+
+Différence avec une OTA Matter après appairage
+
+L'USB ne traverse ni la session CASE/BDX ni les validations VerifiedOta de
+réception ; le contrôle local du fichier, de l'identité et du readback est donc
+indispensable. Il ne déclenche pas une transaction normale Provider/Requestor.
+
+Le requestor recharge depuis NVS la cible et l'état OTA. Si l'état enregistré
+était Applying, le SDK compare la version en cours à la cible négociée ; une
+autre version injectée par USB provoque un échec de ConfirmCurrentImage, puis
+le driver réinitialise le suivi Requestor. La confirmation boot VALID demeure
+un mécanisme distinct de ce suivi Matter. Cela justifie de partir d'Idle et de
+revérifier l'état/version après USB ; ne pas effacer NVS ou réappairer pour
+nettoyer artificiellement une transaction.
+
+Récupération d'un appareil non démarrable
+
+S'il reste une image précédente vérifiée avec sélecteur VALID, un plan spécifique
+peut viser le retour à cette image en préservant ses octets et la NVS. Il faut
+d'abord expliquer l'état des deux sélecteurs et le comportement du bootloader.
+Si aucun secours intègre/VALID n'est prouvé, ne pas appliquer la procédure de
+mise à jour normale et ne pas restaurer aveuglément un ancien dump complet :
+NVS/appairage/layout peuvent avoir changé depuis. Conserver la sauvegarde du
+cas en panne et préparer une restauration ciblée revue.
+
+Limites de validation
+
+Migration initiale et premier transfert OTA validés sur cette unité. La future
+mise à jour USB sur le layout à deux slots, un rollback forcé, une restauration
+de panne et les essais physiques prolongés ne sont pas déclarés testés ici.
+
+Sources primaires locales inspectées : ESP-IDF 5.5.5, esp_ota_ops.c,
+bootloader_common_loader.c, bootloader_utility.c et esp_flash_partitions.h ;
+ESP-Matter 1.5.1/connectedhomeip, OTAImageProcessorImpl.cpp,
+DefaultOTARequestorDriver.cpp et DefaultOTARequestor.cpp ; main/main.cpp et
+main/VerifiedOta.h du profil OTA. Les constantes/parseurs historiques restent
+dans tools/ota_migration_plan.py, limité à la première migration.

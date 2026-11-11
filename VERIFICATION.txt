@@ -1,0 +1,47 @@
+Wind Calm — portée des validations
+
+Profil concerné : firmware/WindCalmThreadOTA, 40005 / 4.0.5-thread-ota.
+Ces résultats concernent un exemplaire équipé d'un XIAO ESP32-C6 et d'une
+alimentation régulée indépendante. Ils ne qualifient pas toutes les variantes.
+
+Validation sur appareil
+
+- Mise à jour Matter OTA avec version relue sur le XIAO, retour Idle et
+  appairage conservé.
+- Commandes HA lumière et ventilateur, avec états Matter concordants.
+- Confirmation utilisateur des commandes physiques et du suivi ON/OFF dans
+  HA à la télécommande sur le montage alimenté normalement.
+- Lecture des diagnostics et redémarrage distant authentifié vérifiés pendant
+  la qualification du profil de maintenance.
+
+Ces essais ne constituent pas une endurance instrumentée continue. Un retour
+utilisateur de stabilité ne suffit pas à qualifier tous les cas de panne.
+La sélection absolue de couleur n'est pas validée : le panneau LED peut changer
+la teinte au ON/OFF et ne restitue pas toujours la même couleur pour un même mode.
+
+Validation logicielle
+
+Les tests hôte couvrent protocole Tuya, confirmations, limites et délais,
+publication, commissioning, supervision, autorisations et clients SSH/API.
+Les suites OTA et release vérifient notamment identité, version, longueur,
+intégrité et refus des images incompatibles. Plusieurs tests compilent le code
+C++ du projet avec sanitizers ; les interfaces SDK sont simulées si nécessaire.
+Les contrôles de publication recherchent fichiers privés, formes de secrets,
+chemins personnels et images non revues.
+
+La compilation ESP32-C6 depuis un clone Linux neuf a été vérifiée par CI pour
+le firmware conservé. Un test hôte ou une compilation n'est pas un essai radio.
+Les tests exigeant SDK ou archives privées sont explicitement ignorés dans un
+clone qui ne les contient pas ; exécuter les commandes de docs/DEVELOPMENT.md
+pour obtenir les résultats de l'environnement courant.
+
+Limites restant à qualifier
+
+- Récupération de blocages injectés et protections contre les resets répétés.
+- Rollback forcé sur matériel et reprise après interruption contrôlée.
+- Perte puis reprise de HA/Thread et endurance instrumentée de 48 à 72 heures.
+- Intégration mécanique et thermique du montage final, non photographié.
+
+Voir PRODUCTION.txt pour les critères et SECURITY.txt pour le modèle de sécurité.
+Les journaux de développement, captures et preuves détaillées sont conservés
+séparément par le mainteneur et ne font pas partie du guide utilisateur.

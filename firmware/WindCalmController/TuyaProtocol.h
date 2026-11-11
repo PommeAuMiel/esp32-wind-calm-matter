@@ -1,0 +1,1 @@
+../WindCalmProtocolTest/TuyaProtocol.h

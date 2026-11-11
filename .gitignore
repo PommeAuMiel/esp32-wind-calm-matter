@@ -1,0 +1,26 @@
+# Generated toolchains, firmware and private device evidence.
+/.local/
+/build/
+/private/
+**/managed_components/
+**/sdkconfig
+**/sdkconfig.old
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Never stage local access credentials or configuration by accident.
+.env
+.env.*
+!.env.example
+secrets.yaml
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+ha_ssh.json
+
+# IDE/coverage products.
+.coverage
+htmlcov/
+.pytest_cache/

@@ -1,0 +1,214 @@
+Wind Calm — maintenance OTA et SSH/API
+
+Profil et prérequis
+
+Le profil actif est WindCalmThreadOTA, version de référence 40005 /
+4.0.5-thread-ota. Le client vérifie explicitement la paire source/cible de la
+release ; ne pas renvoyer une version déjà installée ni réutiliser son numéro
+avec d'autres octets. Préparer une nouvelle version pour une nouvelle image.
+Le XIAO doit être appairé, joignable par Matter et alimenté de façon stable.
+VERIFICATION.txt résume la portée des validations et PRODUCTION.txt les essais
+restant à qualifier avant une installation difficile d'accès.
+
+Accès privé
+
+Le client utilise private/access/ha_ssh.json, clé SSH dédiée et known_hosts
+vérifié. Le nœud Matter et les entités sont ceux de cette configuration locale,
+pas des identifiants universels. Reprendre l'exemple public puis renseigner les
+valeurs de l'installation ; exemple : home-assistant/ha_ssh.example.json.
+L'adresse 192.0.2.10 et les chemins/compte/nœud de l'exemple sont fictifs.
+Les chemins clé/known_hosts doivent désigner des fichiers existants protégés.
+Vérifier explicitement la clé d'hôte lors de l'établissement initial de confiance ;
+le client refuse ensuite une clé inattendue, sans acceptation silencieuse.
+Ne pas ajouter le fichier réel à Git. L'API Matter
+reste interne à HA, sur ws://core-matter-server:5580/ws. Ne pas exposer ce port
+au LAN pour ce flux. Python standard library et SSH suffisent au client.
+
+Contrôle ponctuel
+
+Depuis la racine du dépôt :
+
+  python3 tools/ha_ota.py preflight
+  python3 tools/ha_ota.py status
+  python3 tools/ha_ota.py diagnostics
+
+preflight consulte cache et métadonnées HA. status lit directement version,
+chaîne, VID/PID ; une version en cache ou available=true ne prouve pas une
+réponse actuelle. diagnostics lit les attributs scalaires pris en charge et
+signale ceux absents/sans réponse. Aucun zéro inventé ni ancien cache substitué.
+Les rapports détaillés sont privés : private/ha-ota/<horodatage>/report.json.
+
+Comparer deux relevés datés pour uptime et compteur de démarrages. Un compteur
+isolé ne date pas les resets ; une intervention volontaire doit être enregistrée.
+BootReason et certains attributs natifs sont optionnels ; la version 40001
+n'expose pas tous ceux interrogés. Les diagnostics applicatifs 40002 complètent
+ceux du SDK après installation. Ils ne mesurent pas directement la rotation ou
+l'état physique de la lampe.
+
+Préparer une release
+
+Changer ensemble version.cmake, la borne minimale dans sdkconfig.defaults et
+les gardes base/cible du client. Contrat de la dernière release : source 40004/4.0.4-thread-ota,
+cible 40005/4.0.5-thread-ota, minimum applicable 40004. Préserver identité,
+endpoints, table à deux slots et interfaces NVS compatibles. Ne jamais réutiliser
+une version distribuée avec un autre contenu, ni modifier seulement son en-tête.
+La 40005 a été installée et testée sur une unité en 40004. Ne pas réinstaller
+la même release sur une unité déjà en 40005 ; préparer une nouvelle version.
+Les archives 40000/40001/40002/40003/40004/40005 restent gelées et se vérifient indépendamment.
+
+  python3 tools/thread_ota.py build
+  python3 tools/thread_ota.py verify
+  python3 -m unittest discover -s tests -p 'test_*.py' -v
+  python3 firmware/WindCalmThreadOTA/tests/test_ota.py
+  python3 firmware/WindCalmThreadOTA/tests/test_release.py
+
+La sortie courante est build/WindCalmThreadOTA-40005/windcalm-40005.ota.
+Prendre SHA256_CONTENEUR dans le manifeste : SHA du conteneur COMPLET,
+pas celui de son payload .bin. Archiver manifeste/sources/images, hors Git.
+
+  python3 tools/verify_release_archive.py build/WindCalmThreadOTA-40005
+  python3 tools/ha_ota.py validate-image --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
+
+validate-image est local. Il contrôle conteneur, application ESP32-C6, checksum,
+SHA, identité, projet, versions et plage. Cela ne prouve pas un essai radio.
+
+OTA, import et installation distincts
+
+Utiliser l'alimentation habituelle et Thread ; aucun USB nécessaire. Ne pas
+interrompre le transfert/redémarrage. Avant installation, status doit répondre
+avec la version source attendue et la bonne identité, OTA disponible.
+
+1. Importer une seule fois les octets validés, puis contrôler le candidat :
+
+  python3 tools/ha_ota.py import-image --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
+  python3 tools/ha_ota.py check-update --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
+
+   L'import ne redémarre ni HA ni le XIAO et ne lance pas l'installation. Le
+   reçu privé private/ha-ota/receipts/<SHA>.json correspond aux octets importés.
+   Ne pas recopier un reçu d'une autre image ni contourner son contrôle.
+2. Terminal A, ouvrir le suivi puis attendre ota_watch_ready :
+
+  python3 tools/ha_ota.py watch-update --seconds 900
+
+3. Terminal B, envoyer une seule demande :
+
+  python3 tools/ha_ota.py install-update --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
+
+4. Observer Querying → Downloading → Applying, boot et version réelle.
+   Le suivi se termine quand les lectures confirment la cible ; il n'est pas
+   une supervision d'endurance. Refaire status/diagnostics après stabilité et
+   retour Idle, puis comparer commandes HA/télécommande et effets physiques.
+   Après confirmation de cible, watch-update rafraîchit aussi l’entité Firmware
+   avec homeassistant.update_entity. Un échec de ce rafraîchissement ne relance
+   jamais une installation et ne transforme pas une OTA confirmée en échec.
+
+Le client relit identité/version et exige le reçu de l'image avant update_node.
+Dans Matter Server 1.4.0, min_applicable_software_version du candidat vaut zéro
+par construction ; le minimum réel reste strict dans l'en-tête et le reçu.
+Le provider ne retourne pas le digest de son stockage : un reçu d'import n'est
+pas une relecture cryptographique du fichier interne. Le firmware vérifie SHA
+et longueur du payload reçu puis les octets du slot avant application.
+
+Timeout ou résultat inconnu
+
+- Refus local : corriger image/configuration/reçu, sans désactiver les gardes.
+- Import interrompu : le ticket est à usage unique ; l'image peut avoir été
+  stockée sans reçu revenu. Examiner rapports et état avant une nouvelle action.
+- install-update sans réponse : l'ordre peut être accepté. Ne pas renvoyer
+  automatiquement ; poursuivre le suivi et lire l'ancienne/nouvelle version.
+- Suivi expiré : cela n'annule pas l'OTA et ne prouve pas son échec. Vérifier
+  progression, état et version avant de décider une nouvelle tentative.
+- XIAO muet : ne pas confondre cache/disponibilité annoncée et lecture réelle.
+  Le helper n'efface pas NVS, ne sélectionne pas automatiquement un autre slot
+  et ne réappaire pas l'appareil pour récupérer une communication.
+
+La santé locale confirme l'image après progrès sain, sans exiger HA. Avant
+VALID, un reset peut faire revenir à l'image précédente. Après VALID, une perte
+réseau tardive ne déclenche pas automatiquement le rollback. Les données NVS
+modifiées ne sont pas restaurées par le retour à l'ancien slot.
+
+Maintenance 40002 et supervision
+
+La release expose diagnostics bornés et commande Matter de redémarrage
+authentifiée/autorisée. Elle conserve appairage/NVS et n'émet pas de consigne
+d'actionneur. La disponibilité de cette interface doit être vérifiée après
+installation ; ne pas tenter de l'utiliser sur 40001 comme si elle existait.
+La santé est au root 0, cluster constructeur 0xFFF1FC00, schéma 1 jusqu’à
+40003 puis schéma 2 à partir de 40004. Les attributs 0–15 restent compatibles :
+
+  Attribut 0 schema ; 1 TuyaReady ; 2 knownMask (0..63).
+  3 checksum UART invalides ; 4 trames rejetées ; 5 récupérations Tuya.
+  6 révision de rapport ; 7 timeouts de commande ; 8 erreurs publication lumière.
+  9 progrès loop ; 10 progrès Matter ; 11 état superviseur.
+  12 dernier motif de récupération ; 13 restartAllowed.
+  14 budget de récupérations ; 15 restartPending.
+
+Les ajouts du schéma 2 (mémoire, lumière et âge de rapport) et leur cadence
+sont décrits dans firmware/WindCalmThreadOTA/HEALTH.txt.
+
+TuyaReady/restartAllowed/restartPending sont booléens ; les compteurs sont
+uint32 et peuvent boucler modulo 2^32. Une valeur absente n'est pas zéro.
+L'action standard Actions au root 0 utilise InstantAction, actionID 1,
+type Other, nom Restart controller. Le firmware demande session CASE avec
+fabric valide, hors commissioning, et privilège ACL Administer sur la commande.
+Santé locale, OTA Idle, travail CHIP récent et absence de reboot en attente
+sont aussi requis ; une demande acceptée est différée de deux secondes puis
+recontrôlée avant reboot. Une demande pending expire au bout de trente secondes.
+Elle n'efface pas la fabric et ne réinitialise pas le contrôleur MCU.
+
+Après vérification que 40002 répond et expose les fonctionnalités attendues :
+
+  python3 tools/ha_ota.py restart-controller
+
+Le client exige identité/version réelle, Actions présent, schéma de santé
+compatible, restartAllowed et OTA Idle. C'est une action explicite unique,
+sans retry automatique. Un timeout ne prouve pas que l'ordre a été rejeté ;
+observer la reprise avant toute nouvelle demande.
+
+Le guide du profil OTA décrit son contrat. Une commande de reboot ne répare
+pas un appareil qui ne peut plus recevoir aucune communication.
+
+Le collecteur peut produire des relevés bornés :
+
+  python3 tools/ha_ota.py monitor-health --seconds 300 --interval 60 --stale-after 180 --json
+  python3 tools/ha_ota.py monitor-health --seconds 0 --json
+
+Sans --json, il émet JSONL puis résumé. Code sortie 2 si santé dégradée. Son
+état précédent persiste en privé pour comparer progrès/redémarrages entre
+sondages. --seconds 0 est un snapshot live, pas un programme résident.
+
+Le collecteur prépare relevés, âge/disponibilité et alertes HA ; sa
+configuration effective et son exécution durable sont distinctes de sa présence
+dans le dépôt. Garder une dernière lecture réelle réussie et distinguer XIAO
+muet, HA/SSH indisponible et OTA en cours. Ne pas automatiser reboot, coupure,
+relance OTA ou commande moteur sur un simple timeout. Les exemples restent
+des exemples jusqu'à installation et test d'une alerte contrôlée.
+
+Sans OTA et secours USB
+
+Modifier noms/icônes/cartes HA ne demande pas de firmware. USB reste nécessaire
+pour première installation, changement de partitions/bootloader et certaines
+pannes sans application communicante. Voir firmware/WindCalmThreadOTA/USB-RECOVERY.txt.
+
+Pour l'unité migrée, commencer par sauvegarde complète fraîche, identité/table/
+sélecteurs et inspection des deux applications. Un nouveau plan choisit le slot
+inactif réel et active un seul sélecteur NEW, avec readbacks après chaque écriture.
+Ne pas réutiliser le plan de première migration, un offset supposé, erase-flash,
+upload Arduino historique, fichier fusionné ou ota_data_initial.bin. Préserver
+bootloader/table/NVS, image active et son sélecteur VALID. Le .ota ne s'écrit pas
+tel quel dans un slot applicatif.
+
+Le branchement USB confirmé pour ce montage alimente XIAO et contrôleur sans
+secteur simultané. Les ports/identifiants du guide sont des placeholders ; lire
+l'identité réellement présente avant toute intervention. Les sauvegardes et
+captures contiennent potentiellement des secrets et restent hors Git.
+
+Avant installation définitive
+
+Vérifier les commandes HA et télécommande, le suivi des états et la reprise
+après mise à jour sur le montage réel. Récupération de blocage, rollback forcé
+et endurance 48–72 h restent à qualifier ; une OTA réussie ne les remplace pas.
+Voir PRODUCTION.txt.
+Certificats Matter de développement, Secure Boot/chiffrements flash/NVS
+désactivés ; SHA n'est pas une signature de l'éditeur. La maintenance ne
+renforce pas le RF d'origine et n'exclut pas tout besoin futur d'accès physique.

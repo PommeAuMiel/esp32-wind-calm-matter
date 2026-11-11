@@ -1,0 +1,9 @@
+{
+  "host": "192.0.2.10",
+  "port": 22,
+  "user": "ha-maintenance",
+  "identity_file": "/absolute/private/path/id_ed25519",
+  "known_hosts_file": "/absolute/private/path/known_hosts",
+  "node_id": 1,
+  "light_entity": "light.wind_calm_lumiere"
+}

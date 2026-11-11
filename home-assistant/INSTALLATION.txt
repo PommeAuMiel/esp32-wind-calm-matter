@@ -1,0 +1,78 @@
+Wind Calm — présentation et diagnostic Home Assistant
+
+Le profil Matter/Thread expose lumière endpoint 1, ventilateur endpoint 2 et
+bips endpoint 3. Garder les identifiants d'entité et l'appairage après une mise
+à jour compatible. Le profil de référence est WindCalmThreadOTA ; les procédures
+d'installation et de maintenance sont dans MAINTENANCE.txt.
+
+Noms et carte
+
+Renommer les entités existantes dans HA :
+- fan : Ventilateur ; mdi:ceiling-fan.
+- light : Lumière ; mdi:ceiling-light.
+- switch de l'endpoint 3 : Bips télécommande ; mdi:volume-high.
+- select de teinte : Teinte de lumière ; mdi:palette-outline.
+
+Conserver leurs entity_id pour préserver les automatisations. Bips ON signifie
+son activé, OFF signifie muet. Les commandes Teinte 1/2/3 ne garantissent pas
+une couleur physique fixe ; le panneau LED peut changer de teinte au ON/OFF. Les réglages natifs Power-on behavior
+ne sont pas implémentés par le backend UART ; ne pas en déduire le démarrage réel.
+Le client peut désactiver uniquement ces deux entités sur le nœud configuré :
+
+  python3 tools/ha_presentation.py tidy
+
+Leurs identifiants et les clusters Matter sont conservés. Pour annuler, réactiver
+les entités dans les paramètres des entités HA. Aucun état de démarrage MCU
+n’est programmé par cette opération.
+
+Firmware indique la disponibilité d’une mise à jour ; la version installée
+reste dans les informations de l’appareil. Si latest_version est inconnu :
+
+  python3 tools/ha_presentation.py refresh-firmware --expected-version 4.0.5-thread-ota
+
+Utiliser la version réellement installée. Cette commande vérifie une mise à jour
+sans en demander l’installation. Le suivi OTA du client effectue cette lecture
+après confirmation de la cible. OFF avec versions égales signifie à jour.
+
+wind-calm-card.yaml est un exemple de carte Tile standard sans module tiers.
+Remplacer les quatre entités a_remplacer_* par les entités réellement découvertes.
+Ajouter une carte ne renomme pas l'entité sur la page de l'appareil. Le sens
+s'affiche seulement lorsque le ventilateur est OFF ; la garde du firmware
+exige un arrêt confirmé et dix secondes, indépendamment de la carte.
+
+L'accès opérationnel du projet passe par SSH/API, sans navigateur automatisé.
+La carte et les noms restent des propositions tant qu'ils n'ont pas été appliqués
+et relus sur l'installation ciblée. Les exemples ne contiennent pas son adresse
+réseau, nœud Matter ou noms de pièces.
+
+Diagnostic du retour d'état lumière
+
+En cas de décalage entre la lampe réelle et HA, distinguer l'état physique,
+les rapports du contrôleur, le cache Matter et l'entité HA. Une LED de diagnostic
+sur USB ne prouve pas l'état de la lampe du ventilateur alimentée normalement.
+
+Si lampe et HA divergent, relever avant toute modification :
+1. État de l'entité, disponibilité, last_changed et last_updated.
+2. Cache Matter pour endpoint 1, cluster 6, attribut 0 (OnOff).
+3. Logs de souscription/rapport et erreurs autour de l'appui, sans credentials.
+4. Puis une lecture Matter effective de 1/6/0, avec résultat et délai.
+
+get_node consulte le cache ; read_attribute interroge l'appareil et peut mettre
+le cache à jour. Conserver cette distinction et horodater avant/après la lecture.
+
+- Appareil OFF, cache Matter OFF, HA ON : examiner entité/intégration HA.
+- Appareil OFF, cache Matter ON : examiner rapport/souscription Matter.
+- Appareil ON, lampe réellement OFF : examiner état exposé et rapport MCU.
+- Lecture effective sans réponse : examiner disponibilité Matter, sans prendre
+  available=true ou le cache comme preuve que le XIAO répond encore.
+
+Ces relevés ne doivent pas ajouter d'ordre moteur/lumière, réappairer ou redémarrer
+pour masquer le symptôme. Les mesures détaillées et identifiants restent privés.
+Une mise à jour de maintenance ne constitue pas à elle seule un correctif d'état.
+
+Références
+
+https://www.home-assistant.io/dashboards/tile/
+https://www.home-assistant.io/dashboards/features/
+https://www.home-assistant.io/dashboards/conditional/
+https://www.home-assistant.io/integrations/matter/

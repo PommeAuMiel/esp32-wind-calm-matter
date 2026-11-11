@@ -1,0 +1,47 @@
+name: Host tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, Node 24
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6, Node 24
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Check public files
+        run: |
+          python .github/scripts/test_publication_guard.py
+          python .github/scripts/check_public_tree.py
+      - name: Host and simulated SDK regressions
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: USB migration guards
+        run: python tools/test_ota_migration_plan.py
+      - name: OTA policy and wrapper regressions
+        run: python firmware/WindCalmThreadOTA/tests/test_ota.py
+      - name: Release guards
+        run: python firmware/WindCalmThreadOTA/tests/test_release.py
+      - name: Whitespace
+        run: git diff --check

@@ -1,0 +1,37 @@
+DIAGNOSTICS — SCHÉMA 2 (40004)
+
+Cluster Matter root 0 / 0xFFF1FC00, lecture seule, scalaires de taille fixe.
+Les attributs 0–15 gardent leur identifiant et leur type du schéma 1 :
+0 schéma, 1 Tuya prêt, 2 masque connu, 3 erreurs checksum, 4 trames rejetées,
+5 récupérations Tuya, 6 révision rapport, 7 commandes expirées,
+8 erreurs publication lumière, 9 progrès loop, 10 progrès Matter,
+11 état superviseur, 12 raison récupération, 13 restart autorisé,
+14 budget récupération, 15 restart en attente.
+
+Ajouts :
+16 heap libre, 17 minimum heap libre depuis boot, 18 plus grand bloc libre :
+   uint32, octets, heap MALLOC_CAP_8BIT ; échantillonnage toutes les 5 s.
+19 état lumière MCU connu, 20 lumière confirmée par MCU,
+21 commande lumière en attente, 22 attribut lumière Matter lisible,
+23 valeur observée de cet attribut, 24 rapport MCU vu : booléens.
+25 âge du dernier rapport MCU : uint32 en ms, saturé à UINT32_MAX ;
+   UINT32_MAX avec rapport_vu=false signifie inconnu, jamais un rapport récent.
+26 tentatives de publication lumière : uint32 modulo 2^32.
+
+Tous les champs sauf 1, 13, 15 et 19–24 sont uint32. La valeur de 20 n'est
+interprétable que lorsque 19=true ; celle de 23 seulement lorsque 22=true.
+L'observation de l'attribut a lieu sous le verrou Matter après une tentative de
+réconciliation, et ne prétend pas mesurer l'état physique de la lampe.
+Une lecture explicite utilise le snapshot atomique courant ; ces champs ne
+contiennent ni clés, ni codes d'appairage, ni adresses, ni trames UART brutes.
+
+Notifications : 9, 10, 16–18, 25, 26 comparés au dernier snapshot notifié
+toutes les 30 s ; autres changements examinés par le probe Matter toutes les
+5 s. Le superviseur et le watchdog gardent leurs cadences et leurs gardes.
+
+Publication des commandes : état MCU reçu ou transition de commande en attente
+marquent la publication nécessaire ; retry borné à 50 ms après échec.
+Sans changement, réconciliation toutes les secondes pour réparer un attribut
+optimiste ou une publication manquée. La contention du verrou Matter ne
+consomme pas une tentative. Aucun ordre actionneur n'est répété par cette
+politique. Endpoints, appairage, partitions et sécurité Matter restent stables.

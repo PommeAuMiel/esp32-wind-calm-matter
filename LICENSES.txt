@@ -1,0 +1,47 @@
+Licences et provenance — revue du 5 octobre 2026
+
+Code original
+
+Le code original du projet est sous MIT, selon le choix explicite du propriétaire
+du projet. Voir LICENSE. Cette licence ne remplace pas les licences des SDK,
+exemples ou sources tierces. Conserver leurs notices avec toute redistribution.
+
+Dépendances téléchargées et non vendues dans ce dépôt
+
+- Arduino-ESP32 3.3.12 : licence principale LGPL-2.1, avec licences propres à
+  certains composants. Les exemples Matter utilisés pour l'ordre d'initialisation
+  portent Apache-2.0 ; cela ne signifie pas que tout Arduino est sous Apache.
+- ESP-IDF 5.5.5 et ESP-Matter 1.5.1 : Apache-2.0 pour les sources concernées,
+  avec dépendances et bibliothèques embarquées sous leurs propres licences.
+- Les dépendances effectives sont listées dans dependencies.lock. Les sources
+  et avis téléchargés dans .local/ doivent rester disponibles au moment de
+  préparer une distribution de binaires ; cette préparation n'est pas une
+  distribution des SDK ni une archive de conformité exhaustive.
+
+Références consultées sans copie de source
+
+- christiaanderidder/esphome-create-wind-calm : schéma de datapoints et référence
+  matérielle. Aucun YAML/source du dépôt n'est intégré au code original. Une
+  licence racine n'a pas été trouvée lors de la revue ; ne pas assimiler un dépôt
+  public à une autorisation de copie/relicence.
+- ESPHome : lecture du traitement Tuya 07/22 et 23 ; aucun code copié dans le
+  noyau de protocole original. Provenance et commits dans SOURCES.md.
+
+Adaptation ClosureControl
+
+Les deux patches/matter_closure_patch.h courants sont une adaptation originale
+MIT : ils délèguent explicitement la comparaison vers l'opérateur public des
+structures du SDK. Ils ne contiennent plus la copie historique fieldwise du
+lib-builder Espressif, dont la licence de fichier n'avait pas été établie.
+Les anciens documents/sources exacts restent privés pour la traçabilité.
+Le SDK CHIP auquel l'adaptation délègue conserve ses licences Apache-2.0 et
+avis propres. La délégation doit rester couverte par tests et compilation.
+
+Sources de vérification
+
+https://raw.githubusercontent.com/espressif/arduino-esp32/3.3.12/LICENSE.md
+https://raw.githubusercontent.com/espressif/arduino-esp32/3.3.12/libraries/Matter/examples/Commissioning/MatterCHIPoBLEThread/MatterCHIPoBLEThread.ino
+https://github.com/espressif/esp-idf/blob/v5.5.5/LICENSE
+https://github.com/espressif/esp-matter
+https://github.com/espressif/esp32-arduino-lib-builder
+https://github.com/christiaanderidder/esphome-create-wind-calm

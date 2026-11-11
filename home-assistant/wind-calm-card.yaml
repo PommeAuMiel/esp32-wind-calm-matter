@@ -1,0 +1,61 @@
+# Remplacer les quatre entités « a_remplacer_* » par les identifiants réels de HA.
+# Carte manuelle Lovelace : aucun module supplémentaire requis.
+# Sources : https://www.home-assistant.io/dashboards/tile/
+# https://www.home-assistant.io/dashboards/features/
+type: vertical-stack
+title: Wind Calm
+cards:
+  - type: tile
+    entity: fan.a_remplacer_ventilateur
+    name: Ventilateur
+    icon: mdi:ceiling-fan
+    color: blue
+    state_content:
+      - state
+      - percentage
+    features:
+      - type: fan-speed
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: light.a_remplacer_lumiere
+        name: Lumière
+        icon: mdi:ceiling-light
+        color: amber
+        icon_tap_action:
+          action: toggle
+      - type: tile
+        entity: switch.a_remplacer_bips
+        name: Bips télécommande
+        icon: mdi:volume-high
+        color: orange
+        features_position: inline
+        features:
+          - type: toggle
+  - type: tile
+    entity: select.a_remplacer_teinte
+    name: Teinte de lumière
+    icon: mdi:palette-outline
+    color: amber
+    features:
+      - type: select-options
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: fan.a_remplacer_ventilateur
+        state: "off"
+    card:
+      type: tile
+      entity: fan.a_remplacer_ventilateur
+      name: Sens de rotation · attendre 10 s
+      icon: mdi:rotate-3d-variant
+      color: blue
+      state_content: direction
+      icon_tap_action:
+        action: none
+      tap_action:
+        action: none
+      features:
+        - type: fan-direction

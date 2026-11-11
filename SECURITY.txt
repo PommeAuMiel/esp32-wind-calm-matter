@@ -1,0 +1,90 @@
+Wind Calm — sécurité du profil Matter/Thread
+
+Périmètre
+
+Le XIAO parle Matter sur Thread et UART Tuya avec le contrôleur d'origine.
+La télécommande RF agit sur ce contrôleur ; le XIAO ne modifie pas son protocole
+radio propriétaire. Le firmware ne contient pas de mot de passe Wi-Fi, dataset
+Thread partagé, token HA ou clé SSH de l'installation.
+
+Commissioning et accès
+
+- PIN/discriminator Matter propres à l'appareil, entropie matérielle, valeurs
+  validées et conservées en NVS. Pas de repli silencieux sur le PIN de test.
+- Conservation de l'appairage pendant une mise à jour applicative compatible.
+  Une corruption d'identité doit rester une erreur, pas fabriquer une identité.
+- Matter CASE chiffre/authentifie le pair ; ACL autorise les opérations.
+- BLE reste disponible pour l'appairage. La suppression du Bluetooth enlèverait
+  ce moyen de commissioning ; elle n'est pas présentée comme une optimisation.
+
+OTA et partitions
+
+L'image est contrôlée pour VID/PID, projet, version numérique et texte, plage
+applicable, taille, descripteur ESP32-C6, checksum et SHA-256. Le wrapper OTA
+vérifie le flux puis les octets du slot avant application. Les deux slots et
+le rollback au démarrage sont conservés ; l'image devient VALID après progrès
+local sain, sans exiger la disponibilité de HA.
+
+Une empreinte SHA vérifie l'intégrité, pas la signature indépendante de l'éditeur.
+Les certificats Matter sont de développement. Secure Boot, chiffrement de flash
+et chiffrement NVS ne sont pas activés ; aucun eFuse n'est modifié. Un
+administrateur autorisé de la fabric peut distribuer une autre image compatible.
+Le rejet d'une version non supérieure n'est pas un antirollback matériel.
+Une sauvegarde complète de flash peut contenir des secrets d'appairage.
+
+Maintenance distante 40002
+
+La release ajoute une surveillance permanente de progrès local et du travail
+Matter, ainsi qu'une interface de maintenance authentifiée. Les diagnostics
+sont scalaires, bornés et sans fabric/PIN ; la commande de redémarrage
+demande le privilège Matter approprié et garde NVS/appairage.
+L'interface 40002 demande CASE/fabric valide, hors commissioning, privilège
+ACL Administer pour InstantAction, actionID 1 au root 0. Santé locale, OTA Idle,
+réactivité CHIP et absence de reboot pending sont vérifiées avant acceptation
+puis avant exécution différée. Cluster santé constructeur 0xFFF1FC00, schéma 1 puis schéma 2 en 40004,
+seulement booléens et uint32 bornés ; aucune identité de fabric exposée.
+Les ajouts mémoire et lumière sont en lecture seule, sans commandes arbitraires.
+La réduction des notifications conserve les probes et le watchdog locaux.
+Les contrôles locaux ne doivent pas déclencher d'ordre moteur ou lumière.
+Une indisponibilité de HA seule ne doit pas devenir une boucle de reboot.
+La lecture des diagnostics et le redémarrage autorisé ont été vérifiés sur un
+appareil après OTA 40002. Le refus des commandes non autorisées est couvert par
+tests simulés ; aucune attaque radio n'a été réalisée. La récupération de
+blocages et le rollback forcé restent à tester sur matériel. Leur contrat exact
+est décrit dans le guide OTA.
+
+Protocoles et données
+
+Le parseur UART a des limites fixes et rejette trames invalides, types/plages
+inattendus et checksums incorrects. Les consignes passent par le contrôleur,
+avec vérification d'arrêt/délai pour le sens. Un acquittement logiciel ne prouve
+pas un état physique de la lampe ou du moteur.
+
+Les logs USB utilisent un timeout TX nul et les diagnostics détaillés expirent.
+Les clients HA utilisent SSH à clé, known_hosts vérifié, sans transfert d'agent.
+Le token Supervisor est lu dans l'environnement distant ; il n'est pas envoyé
+dans les arguments SSH ni imprimé. Le port Matter Server interne reste interne.
+Import, demande d'installation et observation sont séparés ; une mutation
+incertaine après timeout n'est pas réémise automatiquement.
+Le helper de présentation valide le nœud Matter et les deux entités avant
+leur désactivation. Le rafraîchissement Firmware appelle uniquement
+homeassistant.update_entity ; il ne demande jamais update.install ni reboot.
+
+Publication
+
+private/, .local/ et build/ sont ignorés. Le contrôle de publication cherche des
+clés privées, tokens de formes courantes, chemins personnels et fichiers privés
+ajoutés par erreur ; il n'est pas un audit exhaustif de secrets. Les fixtures
+de tests utilisent des valeurs synthétiques. Préserver les notices tierces
+et relire le diff staged avant toute publication. Aucune publication GitHub
+ni transmission des captures privées n'est effectuée par les tests ou le build.
+
+Signaler un problème
+
+Fournir version, empreinte, opération, résultat et reproduction minimale sans
+PIN, clés, token, NVS, captures de commissioning ou données d'autres appareils.
+Pour une fuite ou une vulnérabilité non corrigée, contacter pmloikju@pm.me en
+privé. La clé publique OpenPGP et son empreinte sont dans SECURITY.md ; seule
+la partie publique est distribuée sous docs/security-contact.asc. Ne pas envoyer
+de secrets d'appairage ni ouvrir d'issue publique contenant une vulnérabilité.
+Voir SOURCES.md pour les références.

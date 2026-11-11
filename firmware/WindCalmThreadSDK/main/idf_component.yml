@@ -1,0 +1,5 @@
+dependencies:
+  idf: "==5.5.5"
+  espressif/esp_matter: "==1.5.1"
+  espressif/mdns: "==1.13.1"
+  espressif/esp_secure_cert_mgr: "==2.9.3"

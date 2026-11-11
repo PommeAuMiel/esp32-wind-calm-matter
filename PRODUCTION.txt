@@ -1,0 +1,42 @@
+Wind Calm — vérifications avant installation définitive
+
+Le projet fonctionne sur le montage documenté, mais ne garantit pas la
+récupération distante de toutes les pannes. Consulter VERIFICATION.txt pour la
+portée des essais et docs/HARDWARE.md pour les limites matérielles.
+
+Avant une installation difficile d'accès
+
+1. Conserver une sauvegarde privée, l'image exacte du firmware, son manifeste
+   et les accès de maintenance hors du ventilateur.
+2. Tester sur l'alimentation habituelle, USB débranché : lumière, six vitesses,
+   sens après arrêt, bips et suivi d'état HA à la télécommande. La teinte du
+   panneau d'origine reste une limite connue, pas une couleur absolue garantie.
+3. Vérifier une OTA compatible, la version réellement installée après boot et
+   la conservation de l'appairage. Un accusé HA seul ne prouve pas l'installation.
+4. Qualifier les pertes HA/Thread, la récupération de blocages, l'interruption
+   de transfert et le rollback de démarrage dans un environnement d'essai,
+   avec procédure de secours USB disponible.
+5. Observer 48 à 72 heures de fonctionnement : progression, redémarrages,
+   commandes et fidélité des états. Configurer une supervision qui distingue
+   une panne HA, un appareil absent et une OTA en cours. Ne pas réémettre une
+   installation ou un ordre moteur sur un simple timeout.
+6. Vérifier fixation, enveloppe, séparation secteur/basse tension, passages de
+   fils et comportement thermique du montage réellement installé.
+
+Les essais de panne et l'endurance ci-dessus restent à qualifier. Une photo
+ou une simulation logicielle ne les remplace pas.
+
+Limites de maintenance distante
+
+Les deux slots et le rollback de démarrage ne restaurent pas les changements
+NVS. Une panne tardive après confirmation de l'image ne déclenche pas forcément
+un rollback. Le redémarrage authentifié exige un appareil encore joignable.
+Perte d'appairage, panne matérielle/flash, modification des partitions ou blocage
+non récupéré peuvent imposer une intervention physique. Conserver un accès à
+l'alimentation et une solution de secours adaptée.
+
+Références
+
+home-assistant/MAINTENANCE.txt : OTA, diagnostics et supervision.
+firmware/WindCalmThreadOTA/USB-RECOVERY.txt : installation et secours USB.
+SECURITY.txt : sécurité et limites ; SECURITY.md : contact privé.

@@ -1,0 +1,36 @@
+name: Problème de fonctionnement
+description: Décrire un écart reproductible sans données privées.
+body:
+  - type: markdown
+    attributes:
+      value: Ne joignez aucun PIN, token, clé, NVS ou dump flash. Utilisez un canal privé pour une vulnérabilité.
+  - type: input
+    id: version
+    attributes:
+      label: Version réellement lue sur le XIAO
+      description: Préciser si la valeur provient d'une lecture effective ou seulement du cache.
+      placeholder: 40002 / 4.0.2-thread-ota
+    validations:
+      required: true
+  - type: input
+    id: sha
+    attributes:
+      label: SHA-256 de l'image
+      description: Empreinte du conteneur ou de l'application, en précisant lequel.
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Étapes et résultat
+      description: Décrire commandes, délai, résultat attendu et observé ; distinguer lampe réelle et état HA.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environnement et validation
+      description: Versions HA/Matter Server, variante du contrôleur et mode d'alimentation ; sans adresse réseau ni identité matérielle personnelle.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Résumé de diagnostic anonymisé
+      description: Lecture réelle, disponibilité, état OTA, progression ou redémarrages ; aucun journal brut contenant des secrets.

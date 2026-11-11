@@ -1,0 +1,48 @@
+name: Firmware build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fresh-clone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, Node 24
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6, Node 24
+        with:
+          python-version: '3.12'
+      - name: Build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flex bison gperf libffi-dev libssl-dev libusb-1.0-0
+      - name: Install pinned isolated SDK
+        run: python tools/bootstrap_sdk.py
+      - name: Compile the ESP32-C6 application
+        run: python tools/thread_ota.py build --live
+      - name: Verify image and manifested inputs
+        run: python tools/thread_ota.py verify
+      - name: Regression tests including installed SDK
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py' -v
+          python tools/test_ota_migration_plan.py
+          python firmware/WindCalmThreadOTA/tests/test_ota.py
+          python firmware/WindCalmThreadOTA/tests/test_release.py
+          python .github/scripts/check_public_tree.py
+      - name: Check that locked public inputs were not rewritten
+        run: git diff --exit-code

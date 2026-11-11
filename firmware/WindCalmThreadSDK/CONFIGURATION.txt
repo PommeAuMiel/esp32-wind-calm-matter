@@ -1,0 +1,120 @@
+Profil SDK dédié Wind Calm — configuration de développement
+==========================================================
+
+Versions ciblées : ESP-IDF 5.5.5, Arduino ESP32 3.3.12, ESP-Matter
+1.5.1. Le firmware applicatif reste celui de WindCalmController. Le profil
+conserve les endpoints lumière 1, ventilateur 2 et bips 3. Le réseau Thread
+est configuré sur l'endpoint racine 0, comme dans le firmware Arduino actuel.
+La table de partitions huge_app reste inchangée : aucune OTA n'est ajoutée.
+
+Changements du profil
+--------------------
+- Reconstruction de tous les composants utilisés avec -Os et sans exceptions
+  C++ ni RTTI. Les fichiers applicatifs, le wrapper Matter Arduino, Preferences
+  et les parties Arduino réellement utilisées ne contiennent pas de throw,
+  try ou catch. Un échec d'allocation dans une bibliothèque C++ peut néanmoins
+  provoquer un arrêt : il ne devient pas une allocation réussie.
+- Matter sur Thread uniquement : station/AP Wi-Fi, pilote de commissioning
+  Wi-Fi et télémétrie Wi-Fi désactivés. Le pilote de commissioning Thread est
+  associé explicitement à l'endpoint 0. Le SDK Arduino standard associe
+  Thread à l'endpoint 2 et le réassocie à 0 à l'exécution ; cette correction
+  du wrapper est conditionnée par la présence du Wi-Fi et disparaît ici.
+- NimBLE conserve les rôles peripheral/broadcaster et le serveur GATT pour
+  l'appairage Matter. Les rôles central/observer et le client GATT sont retirés.
+  Le contrôleur Bluetooth, CHIPoBLE, le chiffrement LE et Secure Connections
+  restent actifs. La bibliothèque BLE Arduino et BLUFI ne sont pas utilisés.
+- Dix-neuf clusters sont conservés : les clusters de sécurité et commissioning
+  de la racine, diagnostic réseau Thread, Descriptor, Identify, Groups, OnOff,
+  Scenes, FanControl et ModeSelect, ainsi que Binding/LevelControl/ColorControl
+  requis par les références internes du SDK (confirmé lors de l'édition de liens).
+  Ces dépendances n'ajoutent ni luminosité ni couleur au modèle. Groups et Scenes font partie de l'endpoint
+  lumière natif et doivent rester disponibles. Les fonctions du ventilateur,
+  reverse, bips et trois teintes sont conservées.
+- Logs SDK et formats détaillés supprimés. Les assertions restent actives,
+  avec arrêt en cas d'échec et sans longs messages. Les vérifications de pile
+  et de sûreté des accès LwIP restent actives. Les diagnostics USB applicatifs
+  restent disponibles. Aucune taille de pile/tampon radio n'est réduite ici.
+  Les piles IDF main/timer/IPC/idle/ISR/TCPIP/contrôleur BLE sont fixées aux
+  valeurs explicites 4096/8192/2048/2304/2096/4096/5120.
+- Console/CLI de Thread, diagnostics radio de développement, commissioning
+  d'autres appareils Thread et déclencheurs de test Matter désactivés. La
+  capacité FTD/routeur Thread est conservée pour cette première comparaison.
+- La cryptographie native et les primitives requises sont conservées. Aucun
+  remplacement de PASE/CASE, RNG, certificats ou stockage des clés.
+
+Points à vérifier dans la configuration générée
+----------------------------------------------
+Le fichier sdkconfig.defaults n'est pas une preuve de configuration effective.
+Lancer une génération propre puis contrôler sdkconfig, les options de
+compilation et la carte du binaire lié. Certains symboles cachés ignorent les
+valeurs demandées dans un fichier defaults.
+
+Dans Arduino 3.3.12, ENABLE_ARDUINO_DEPENDS est un booléen caché avec default
+y qui sélectionne WIFI_ENABLED et ETHERNET. Demander n dans defaults ne
+suffit généralement pas. Le composant Arduino isolé de ce projet doit
+changer ce default en n, ou rendre cette sélection conditionnelle. Ne pas
+modifier la copie Arduino utilisée pour les firmwares existants. LwIP et
+LWIP_SO_RCVBUF sont conservés explicitement. MEMMAP_SMP est un ancien symbole
+et n'existe pas dans ESP-IDF 5.5.5.
+
+ESP_WIFI_ENABLED est lui aussi caché, avec default y sur ESP32-C6 dans IDF
+5.5.5. La désactivation des options Matter Wi-Fi supprime ses références
+au pilote et peut suffire à éliminer les objets inutilisés par l'éditeur
+de liens. Vérifier la présence réelle de net80211, pp et wpa_supplicant
+dans le fichier map ; ne pas présenter une archive compilée comme du code
+nécessairement inclus. Une suppression complète du composant IDF Wi-Fi
+demande également le patch du default ESP_WIFI_ENABLED vers n dans la copie
+IDF isolée. tools/thread_sdk.py applique ces deux changements contrôlés.
+
+La bibliothèque OpenThread Arduino n'est pas utilisée par le programme : le
+composant IDF OpenThread est requis par ESP-Matter. USB Arduino générique
+est désactivé ; HWCDC/Serial-JTAG fait partie du core. La compilation doit
+conserver ARDUINO_USB_MODE=1 et ARDUINO_USB_CDC_ON_BOOT=1 pour l'application
+et Arduino, et le variant XIAO_ESP32C6 doit être disponible dans le composant.
+
+Appairage : vérification indispensable avant toute validation matérielle
+---------------------------------------------------------------------
+TEST_EVENT_TRIGGER_ENABLED=n retire les déclencheurs de développement.
+ENABLE_TEST_SETUP_PARAMS=y est conservé : les sources 1.5.1 confirment que
+l'override Arduino dépend du salt et des itérations de ce provider de base.
+Arduino remplace PIN et discriminateur APRÈS esp_matter::start. Pour ce profil,
+CHIP_ENABLE_PAIRING_AUTOSTART=n empêche l'ouverture initiale avec ces paramètres
+de base. Arduino publie les identifiants uniques puis ouvre explicitement sa
+fenêtre, uniquement si l'appareil n'est pas déjà appairé. Ce parcours a été
+relu dans Server.h/cpp et MatterIdentity.cpp ; il reste à tester sur matériel.
+Le contrôle fail-closed de l'application reste nécessaire.
+
+Adaptations locales et budgets
+------------------------------
+L'adaptation modem_clock_hal_enable_wifipwr_clock conserve la vérification
+ref>0 avant décrément et accepte la transition légitime vers zéro. Les tests
+hôte compilent la fonction HAL et vérifient aussi le sous-débordement. Il ne
+s'agit pas d'un backport officiel Espressif. Arduino conserve la propriété de
+la libération mémoire BLE, ses wrappers mémoire/panic et
+USE_BLE_ONLY_FOR_COMMISSIONING=n.
+
+Les chemins OpenThread SRP/DNS et sélection IPv6 sont conservés :
+USE_MINIMAL_MDNS=n et LWIP_HOOK_IP6_SELECT_SRC_ADDR_DEFAULT=y. Ces paramètres
+ne changent ni le protocole UART ni les temporisations des commandes.
+
+Serial.setTxTimeoutMs(0) empêche les diagnostics USB de bloquer le pilotage.
+Les tentatives TX restent bornées ; des données de diagnostic peuvent être
+abandonnées si le tampon est plein. Les tests HWCDC couvrent contre-pression,
+mutex occupé, écritures partielles et FIFO déconnecté.
+
+Certificats Matter de développement, absence de Secure Boot et chiffrement
+flash/NVS restent des limites explicites. Voir SECURITY.txt à la racine.
+
+Sources primaires utilisées pour contrôler les noms et dépendances
+-----------------------------------------------------------------
+Sources locales : Arduino 3.3.12 Kconfig.projbuild, CMakeLists.txt,
+libraries/Matter/src/Matter.cpp, MatterWiFiStackWrap.cpp, MatterIdentity.h ;
+ESP-IDF 5.5.5 Kconfig et components/bt/host/nimble/Kconfig.in ; sdkconfig
+du SDK C6 installé et ses headers ESP-Matter.
+
+https://raw.githubusercontent.com/espressif/esp-idf/v5.5.5/components/bt/host/nimble/Kconfig.in
+https://raw.githubusercontent.com/espressif/esp-idf/v5.5.5/components/esp_wifi/Kconfig
+https://raw.githubusercontent.com/espressif/esp-matter/release/v1.5/components/esp_matter/Kconfig
+https://raw.githubusercontent.com/espressif/esp-matter/release/v1.5/components/esp_matter/data_model/esp_matter_endpoint.cpp
+https://raw.githubusercontent.com/project-chip/connectedhomeip/master/src/platform/ESP32/nimble/BLEManagerImpl.cpp
+https://raw.githubusercontent.com/project-chip/connectedhomeip/master/config/esp32/components/chip/Kconfig
