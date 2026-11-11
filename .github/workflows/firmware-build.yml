@@ -28,9 +28,16 @@ jobs:
         with:
           python-version: '3.12'
       - name: Build prerequisites
+        timeout-minutes: 6
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y flex bison gperf libffi-dev libssl-dev libusb-1.0-0
+          # Avoid the Azure mirror that failed DNS on fresh runners.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i -E 's@https?://azure[.]archive[.]ubuntu[.]com/ubuntu@https://archive.ubuntu.com/ubuntu@g' /etc/apt/apt-mirrors.txt
+          fi
+          apt_options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20)
+          sudo apt-get "${apt_options[@]}" -o APT::Update::Error-Mode=any update
+          sudo apt-get "${apt_options[@]}" install -y flex bison gperf libffi-dev libssl-dev libusb-1.0-0
       - name: Install pinned isolated SDK
         run: python tools/bootstrap_sdk.py
       - name: Compile the ESP32-C6 application
