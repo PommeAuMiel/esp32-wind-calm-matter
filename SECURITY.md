@@ -1,7 +1,7 @@
 # Sécurité
 
 Le modèle de sécurité et ses limites sont détaillés dans [SECURITY.txt](SECURITY.txt).
-Le profil actuellement installé et relu par Matter est 40005. Il conserve les
+Le profil actuellement installé et relu par Matter est 40006. Il conserve les
 protections de 40002 ; la portée des essais matériels et les limites restantes
 sont consignées dans VERIFICATION.txt et PRODUCTION.txt.
 

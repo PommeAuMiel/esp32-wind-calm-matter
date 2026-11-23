@@ -49,7 +49,7 @@ python3 tools/thread_ota.py verify
 Chaque release est isolée dans `build/WindCalmThreadOTA-<version>/` avec le
 manifeste, le `.bin` applicatif et le conteneur Matter `.ota`. Archiver également
 les fichiers exacts correspondant aux empreintes `sources` et `sdk_inputs` du
-manifeste avant distribution ; ces copies sont présentes pour les releases 40004 et 40005.
+manifeste avant distribution ; ces copies sont présentes pour les releases 40004 à 40006.
 La vérification contrôle l'identité, les deux versions, la plage
 applicable, la taille du slot, le descripteur ESP et les empreintes. Les archives
 des versions précédentes sont préservées. Ne pas relancer un build d'une version
@@ -57,8 +57,8 @@ déjà distribuée avec un contenu différent : préparer une nouvelle version.
 Un manifeste compilé prouve une
 préparation ; seule une lecture effective du XIAO prouve la version installée.
 
-Pour vérifier les copies gelées de 40005 après les mises à jour de documentation,
-utiliser `python3 tools/verify_release_archive.py build/WindCalmThreadOTA-40005`.
+Pour vérifier les copies gelées de 40006 après les mises à jour de documentation,
+utiliser `python3 tools/verify_release_archive.py build/WindCalmThreadOTA-40006`.
 `thread_ota.py verify` compare les sources/SDK courants au manifeste ; ces deux
 contrôles ont des objets distincts. Le dépôt actuel documente les essais réalisés
 après compilation et ne doit pas écraser les releases déjà distribuées.
