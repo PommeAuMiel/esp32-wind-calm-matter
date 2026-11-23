@@ -30,6 +30,9 @@ class NativeFan : public MatterFan {
     return maximum.val.u8 == 6 && (declaredFeatures & required) == required;
   }
   void onDirection(DirectionCallback callback) { directionCallback_ = callback; }
+  // Call under the CHIP lock from the Arduino loop. A derived SpeedSetting write
+  // is synchronous with its PercentSetting write, so none can still be due here.
+  void forgetDerivedSpeed() { derivedSpeedPending_ = false; }
   bool attributeChangeCB(uint16_t ep, uint32_t cluster, uint32_t attribute,
                          esp_matter_attr_val_t *value) override {
     using namespace chip::app::Clusters;
@@ -38,9 +41,23 @@ class NativeFan : public MatterFan {
         if (value->val.u8 > 1) return false;
         return reporting_ || (directionCallback_ && directionCallback_(value->val.u8));
       }
+      if (attribute == FanControl::Attributes::PercentSetting::Id) {
+        // The SDK follows an accepted PercentSetting with SpeedSetting =
+        // ceil(6 * percent / 100) and calls this callback again. Home Assistant
+        // sends 17 and 67 for levels 1 and 4, which derive speeds 2 and 5: that
+        // echo must not replace the level requested through the percentage.
+        const uint8_t percent = value->val.u8;
+        const bool accepted = MatterFan::attributeChangeCB(ep, cluster, attribute, value);
+        derivedSpeedPending_ = accepted && percent <= 100;
+        derivedSpeed_ = uint8_t((6u * percent + 99) / 100);
+        return accepted;
+      }
       if (attribute == FanControl::Attributes::SpeedSetting::Id) {
         // No Auto/null speed in this profile; nullable uint8 null is 255.
         if (value->val.u8 > 6) return false;
+        if (derivedSpeedPending_ && value->val.u8 == derivedSpeed_) {
+          derivedSpeedPending_ = false; return true;
+        }
         return reporting_ || (_onChangeSpeedCB &&
                _onChangeSpeedCB(windcalm::Controller::percentFor(value->val.u8)));
       }
@@ -56,10 +73,11 @@ class NativeFan : public MatterFan {
       ok &= updateIfDifferent(FanControl::Attributes::SpeedCurrent::Id, level, false);
     }
     if (!directionPending) ok &= updateIfDifferent(FanControl::Attributes::AirflowDirection::Id, direction, false, true);
-    reporting_ = false; return ok;
+    reporting_ = false; derivedSpeedPending_ = false; return ok;
   }
  private:
-  bool reporting_ = false;
+  bool reporting_ = false, derivedSpeedPending_ = false;
+  uint8_t derivedSpeed_ = 0;
   DirectionCallback directionCallback_;
   bool updateIfDifferent(uint32_t attribute, uint8_t value, bool nullable, bool enumeration = false) {
     const uint32_t cluster = chip::app::Clusters::FanControl::Id;

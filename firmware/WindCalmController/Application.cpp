@@ -252,6 +252,7 @@ void tick() {
   LightSyncSnapshot lightSync;
   String pairing;
   if (chip::DeviceLayer::PlatformMgr().TryLockChipStack()) {
+    fan.forgetDerivedSpeed();
     if (mailbox.direction) {
       if (synchronized && mailbox.directionGeneration == epoch && !mailbox.fan)
         controller.requestDirection(mailbox.directionValue,now);
@@ -280,7 +281,7 @@ void tick() {
     if (synchronized && publication.due(now)) {
       publishing = true; bool ok = true;
       if (!controller.fanPending) {
-        const uint8_t p = windcalm::Controller::percentFor(controller.level());
+        const uint8_t p = windcalm::Controller::reportedPercentFor(controller.level());
         ok &= fan.setMode(p ? MatterFan::FAN_MODE_HIGH : MatterFan::FAN_MODE_OFF, fan.ATTR_UPDATE);
         ok &= fan.setSpeedPercent(p, fan.ATTR_UPDATE);
         mailbox.percent = p;

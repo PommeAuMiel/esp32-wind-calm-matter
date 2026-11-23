@@ -23,7 +23,7 @@ import time
 
 NODE = None  # Loaded from private/access/ha_ssh.json before network access.
 VID, PID = 0xFFF1, 0x8000
-BASE_VERSION, TARGET_VERSION = 40004, 40005
+BASE_VERSION, TARGET_VERSION = 40005, 40006
 BASE_STRING, TARGET_STRING = (
     f"{version // 10000}.{(version // 100) % 100}.{version % 100}-thread-ota"
     for version in (BASE_VERSION, TARGET_VERSION)

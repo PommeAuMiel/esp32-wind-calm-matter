@@ -100,6 +100,12 @@ class Controller {
   static uint8_t percentFor(uint8_t level) {
     const uint8_t values[] = {0,17,33,50,67,83,100}; return level <= 6 ? values[level] : 0;
   }
+  // Value published to Matter. The SDK FanControl server derives
+  // PercentSetting = floor(SpeedSetting * 100 / SpeedMax) and
+  // SpeedSetting = ceil(SpeedMax * PercentSetting / 100); only 0,16,33,50,66,83,100
+  // survive both conversions. Publishing 17 or 67 makes the SDK rewrite the
+  // attributes on every reconciliation and report speeds 2 and 5.
+  static uint8_t reportedPercentFor(uint8_t level) { return level <= 6 ? uint8_t(level * 100 / 6) : 0; }
  private:
   uint32_t generation_ = 0, revision_ = 0, fanAt_ = 0, lightAt_ = 0, directionAt_ = 0, stoppedAt_ = 0;
   uint32_t temperatureAt_ = 0, beepsAt_ = 0;

@@ -1,6 +1,6 @@
 Wind Calm — portée des validations
 
-Profil concerné : firmware/WindCalmThreadOTA, 40005 / 4.0.5-thread-ota.
+Profil concerné : firmware/WindCalmThreadOTA, 40006 / 4.0.6-thread-ota.
 Ces résultats concernent un exemplaire équipé d'un XIAO ESP32-C6 et d'une
 alimentation régulée indépendante. Ils ne qualifient pas toutes les variantes.
 
@@ -9,6 +9,11 @@ Validation sur appareil
 - Mise à jour Matter OTA avec version relue sur le XIAO, retour Idle et
   appairage conservé.
 - Commandes HA lumière et ventilateur, avec états Matter concordants.
+- 40006 : OTA depuis 40005 le 23 novembre 2026, version relue sur le XIAO,
+  diagnostics sains après redémarrage et fonctionnement confirmé par le
+  mainteneur. La correction des vitesses 1 et 4 demandées depuis HA repose sur
+  cette confirmation et sur un test hôte modélisant le SDK, sans mesure
+  instrumentée de la vitesse de rotation.
 - Confirmation utilisateur des commandes physiques et du suivi ON/OFF dans
   HA à la télécommande sur le montage alimenté normalement.
 - Lecture des diagnostics et redémarrage distant authentifié vérifiés pendant

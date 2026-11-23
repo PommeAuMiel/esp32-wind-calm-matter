@@ -280,7 +280,7 @@ class MonitorTests(unittest.TestCase):
         if request['command']=='get_node':
             value={'node_id':9,'available':True,'attributes':{'0/42/2':1}}
         else:
-            fields={'0/40/9':40004,'0/40/10':'4.0.4-thread-ota','0/40/2':65521,'0/40/4':32768,
+            fields={'0/40/9':40005,'0/40/10':'4.0.5-thread-ota','0/40/2':65521,'0/40/4':32768,
                     '0/51/1':4,'0/51/2':1000,'0/53/0':15,'0/53/1':5}
             value={path:fields.get(path) for path in request['args']['attribute_path']}
         return {'message_id':request['message_id'],'result':value}

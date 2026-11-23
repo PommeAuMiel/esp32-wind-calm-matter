@@ -2,8 +2,8 @@ Wind Calm — maintenance OTA et SSH/API
 
 Profil et prérequis
 
-Le profil actif est WindCalmThreadOTA, version de référence 40005 /
-4.0.5-thread-ota. Le client vérifie explicitement la paire source/cible de la
+Le profil actif est WindCalmThreadOTA, version de référence 40006 /
+4.0.6-thread-ota. Le client vérifie explicitement la paire source/cible de la
 release ; ne pas renvoyer une version déjà installée ni réutiliser son numéro
 avec d'autres octets. Préparer une nouvelle version pour une nouvelle image.
 Le XIAO doit être appairé, joignable par Matter et alimenté de façon stable.
@@ -48,13 +48,14 @@ l'état physique de la lampe.
 Préparer une release
 
 Changer ensemble version.cmake, la borne minimale dans sdkconfig.defaults et
-les gardes base/cible du client. Contrat de la dernière release : source 40004/4.0.4-thread-ota,
-cible 40005/4.0.5-thread-ota, minimum applicable 40004. Préserver identité,
+les gardes base/cible du client. Contrat de la dernière release : source 40005/4.0.5-thread-ota,
+cible 40006/4.0.6-thread-ota, minimum applicable 40005. Préserver identité,
 endpoints, table à deux slots et interfaces NVS compatibles. Ne jamais réutiliser
 une version distribuée avec un autre contenu, ni modifier seulement son en-tête.
-La 40005 a été installée et testée sur une unité en 40004. Ne pas réinstaller
-la même release sur une unité déjà en 40005 ; préparer une nouvelle version.
-Les archives 40000/40001/40002/40003/40004/40005 restent gelées et se vérifient indépendamment.
+La 40006 corrige la sélection des vitesses 1 et 4 depuis HA ; elle a été
+installée et testée sur une unité en 40005. Ne pas réinstaller une release sur
+une unité qui l'exécute déjà ; préparer une nouvelle version.
+Les archives 40000/40001/40002/40003/40004/40005/40006 restent gelées et se vérifient indépendamment.
 
   python3 tools/thread_ota.py build
   python3 tools/thread_ota.py verify
@@ -62,12 +63,12 @@ Les archives 40000/40001/40002/40003/40004/40005 restent gelées et se vérifien
   python3 firmware/WindCalmThreadOTA/tests/test_ota.py
   python3 firmware/WindCalmThreadOTA/tests/test_release.py
 
-La sortie courante est build/WindCalmThreadOTA-40005/windcalm-40005.ota.
+La sortie courante est build/WindCalmThreadOTA-40006/windcalm-40006.ota.
 Prendre SHA256_CONTENEUR dans le manifeste : SHA du conteneur COMPLET,
 pas celui de son payload .bin. Archiver manifeste/sources/images, hors Git.
 
-  python3 tools/verify_release_archive.py build/WindCalmThreadOTA-40005
-  python3 tools/ha_ota.py validate-image --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
+  python3 tools/verify_release_archive.py build/WindCalmThreadOTA-40006
+  python3 tools/ha_ota.py validate-image --image build/WindCalmThreadOTA-40006/windcalm-40006.ota --expected-sha256 SHA256_CONTENEUR
 
 validate-image est local. Il contrôle conteneur, application ESP32-C6, checksum,
 SHA, identité, projet, versions et plage. Cela ne prouve pas un essai radio.
@@ -80,8 +81,8 @@ avec la version source attendue et la bonne identité, OTA disponible.
 
 1. Importer une seule fois les octets validés, puis contrôler le candidat :
 
-  python3 tools/ha_ota.py import-image --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
-  python3 tools/ha_ota.py check-update --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
+  python3 tools/ha_ota.py import-image --image build/WindCalmThreadOTA-40006/windcalm-40006.ota --expected-sha256 SHA256_CONTENEUR
+  python3 tools/ha_ota.py check-update --image build/WindCalmThreadOTA-40006/windcalm-40006.ota --expected-sha256 SHA256_CONTENEUR
 
    L'import ne redémarre ni HA ni le XIAO et ne lance pas l'installation. Le
    reçu privé private/ha-ota/receipts/<SHA>.json correspond aux octets importés.
@@ -92,7 +93,7 @@ avec la version source attendue et la bonne identité, OTA disponible.
 
 3. Terminal B, envoyer une seule demande :
 
-  python3 tools/ha_ota.py install-update --image build/WindCalmThreadOTA-40005/windcalm-40005.ota --expected-sha256 SHA256_CONTENEUR
+  python3 tools/ha_ota.py install-update --image build/WindCalmThreadOTA-40006/windcalm-40006.ota --expected-sha256 SHA256_CONTENEUR
 
 4. Observer Querying → Downloading → Applying, boot et version réelle.
    Le suivi se termine quand les lectures confirment la cible ; il n'est pas

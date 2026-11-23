@@ -5,7 +5,7 @@ requestor OTA Matter et vérification des images. Endpoints lumière 1,
 ventilateur 2 et bips 3 stables ; clusters requestor/provider client au root 0.
 Wi-Fi retiré, Thread IPv6/SRP/DNS et BLE de commissioning conservés.
 
-Version de référence : **40005 / `4.0.5-thread-ota`**. L'application est partagée
+Version de référence : **40006 / `4.0.6-thread-ota`**. L'application est partagée
 via `Application.h` et `Application.cpp`. Le contrat de diagnostic append-only
 est décrit dans [HEALTH.txt](HEALTH.txt). La portée des validations figure dans
 [VERIFICATION.txt](../../VERIFICATION.txt), et les limites de qualification dans
@@ -38,7 +38,7 @@ exacts des sections sources et sdk_inputs du manifeste avant distribution.
 Les copies gelées se vérifient indépendamment du dépôt courant :
 
 ```sh
-python3 tools/verify_release_archive.py build/WindCalmThreadOTA-40005
+python3 tools/verify_release_archive.py build/WindCalmThreadOTA-40006
 ```
 
 `thread_ota.py verify` exige que les entrées du dépôt/SDK courant correspondent
@@ -55,8 +55,8 @@ Le helper ne propose aucune action de flash, USB ou réseau.
 
 ## Contrat de release
 
-`version.cmake` définit numéro/texte. Pour 40005 : numéro 40005, texte
-`4.0.5-thread-ota`, minimum applicable 40004 dans
+`version.cmake` définit numéro/texte. Pour 40006 : numéro 40006, texte
+`4.0.6-thread-ota`, minimum applicable 40005 dans
 `CONFIG_CHIP_OTA_IMAGE_EXTRA_ARGS`. Les gardes base/cible du client HA suivent
 la même paire. Ne pas renommer un fichier pour en changer la version, modifier
 seulement l'en-tête ou redistribuer d'autres octets sous le même numéro.

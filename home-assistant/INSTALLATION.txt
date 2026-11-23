@@ -28,7 +28,7 @@ n’est programmé par cette opération.
 Firmware indique la disponibilité d’une mise à jour ; la version installée
 reste dans les informations de l’appareil. Si latest_version est inconnu :
 
-  python3 tools/ha_presentation.py refresh-firmware --expected-version 4.0.5-thread-ota
+  python3 tools/ha_presentation.py refresh-firmware --expected-version 4.0.6-thread-ota
 
 Utiliser la version réellement installée. Cette commande vérifie une mise à jour
 sans en demander l’installation. Le suivi OTA du client effectue cette lecture
